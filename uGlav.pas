@@ -1,0 +1,486 @@
+unit uGlav;
+
+interface
+
+uses
+  uRTree, Forms, Classes, Controls, StdCtrls, ExtCtrls, SysUtils, Animate,
+  Graphics, Windows, Messages;
+
+type
+  TfGlav = class(TForm)
+    aiItog: TAnimatedImage;
+    aiNovaya: TAnimatedImage;
+    aiVyhod: TAnimatedImage;
+    Image1: TImage;
+    aiN1: TAnimatedImage;
+    aiN2: TAnimatedImage;
+    aiN3: TAnimatedImage;
+    aiN4: TAnimatedImage;
+    aiN5: TAnimatedImage;
+    aiN6: TAnimatedImage;
+    aiN9: TAnimatedImage;
+    aiN8: TAnimatedImage;
+    aiN7: TAnimatedImage;
+    aiLev: TAnimatedImage;
+    aiPrav: TAnimatedImage;
+    aiVerh: TAnimatedImage;
+    aiNiz: TAnimatedImage;
+    procedure FormDestroy(Sender: TObject);
+    procedure FormCreate(Sender: TObject);
+    procedure aiNovayaClick(Sender: TObject);
+    procedure aiVyhodClick(Sender: TObject);
+    procedure aiN1Click(Sender: TObject);
+    procedure aiNovayaMouseMove(Sender: TObject; Shift: TShiftState; X,
+      Y: Integer);
+    procedure Image1MouseMove(Sender: TObject; Shift: TShiftState; X,
+      Y: Integer);
+    procedure aiVyhodMouseMove(Sender: TObject; Shift: TShiftState; X,
+      Y: Integer);
+  protected
+    procedure LKnMyshi(var Msg: TMsg; var Handled: Boolean);
+    procedure WMNCHitTest(var M: TWMNCHitTest); message WM_NCHITTEST;
+  end;
+
+var
+  fGlav: TfGlav;
+  Igrok: Boolean=False;
+  Kvadrat: Array [1..9] of Byte;
+  Massiv: Array [1..9] of Word=(0, 0, 0, 0, 0, 0, 0, 0, 0);
+  Derevo: TRazTree;
+
+procedure HodCompa;
+procedure Sozdanie(El: PRNode; Vys: Word);
+function Proverka(El: PRNode): ShortInt;
+
+implementation
+
+uses uViz;
+
+{$R *.dfm}
+
+//==============================================================================
+
+procedure TfGlav.FormCreate(Sender: TObject);
+begin
+  Randomize;
+  Derevo:=TRazTree.Create;
+  Application.OnMessage:=LKnMyshi;
+  aiItog.GlyphNum:=5;
+  //aiNovayaClick(self);
+end;
+
+procedure TfGlav.FormDestroy(Sender: TObject);
+begin
+  If Derevo<>nil then
+    Derevo.Destroy;
+end;
+
+procedure TfGlav.LKnMyshi(var Msg: TMsg; var Handled: Boolean);
+var
+  P: TPoint;
+  TC: TControl;
+begin
+  Inherited;
+  If Msg.message=WM_MOUSEMOVE then
+  Begin
+    GetCursorPos(P);
+    TC:=ControlAtPos(P, True, True);
+    if TC=nil then Exit;
+    If (TC.Name='aiNovaya') or (TC.Name='aiVyhod') then
+      (TC as TAnimatedImage).GlyphNum:=0
+    Else
+    Begin
+      aiNovaya.GlyphNum:=0;
+      aiVyhod.GlyphNum:=0;
+    End;
+  End;
+end;
+
+procedure TfGlav.WMNCHitTest(var M: TWMNCHitTest);
+{var
+  P: TPoint;
+  TC: TControl;}
+begin
+  Inherited;
+{  If M.Result=htClient then
+  Begin
+    GetCursorPos(P);
+    TC:=ControlAtPos(P, True, True);
+    if TC=nil then Exit;
+    if TC.Name='Image' then
+      M.Result:=htCaption;
+  End;}
+end;
+
+//==============================================================================
+
+procedure TfGlav.aiNovayaClick(Sender: TObject);
+var
+  i: Byte;
+begin
+  aiNovaya.Enabled:=False;
+  Igrok:=False;
+  aiNovaya.Tag:=0;
+  aiItog.GlyphNum:=5;
+  For i:=0 to ComponentCount-1 do
+    if Components[i] is TAnimatedImage then
+      if Components[i].Tag=10 then
+        (Components[i] as TAnimatedImage).GlyphNum:=0;
+  For i:=1 to 9 do
+    Kvadrat[i]:=0;
+  Derevo.Clear;
+
+  aiLev.Active:=True;
+  //While aiLev.GlyphNum<>8 do Application.ProcessMessages;
+  While True do
+  Begin
+    if aiLev.GlyphNum=8 then Break;
+    Application.ProcessMessages;
+  End;
+  aiLev.Active:=False;
+  aiPrav.Active:=True;
+  //While aiPrav.GlyphNum<>8 do Application.ProcessMessages;
+  While True do
+  Begin
+    if aiPrav.GlyphNum=8 then Break;
+    Application.ProcessMessages;
+  End;
+  aiPrav.Active:=False;
+  aiVerh.Active:=True;
+  //While aiVerh.GlyphNum<>8 do Application.ProcessMessages;
+  While True do
+  Begin
+    if aiVerh.GlyphNum=8 then Break;
+    Application.ProcessMessages;
+  End;
+  aiVerh.Active:=False;
+  aiNiz.Active:=True;
+  //While aiNiz.GlyphNum<>8 do Application.ProcessMessages;
+  While True do
+  Begin
+    if aiNiz.GlyphNum=8 then Break;
+    Application.ProcessMessages;
+  End;
+  aiNiz.Active:=False;
+
+  If Random(100)>49 then
+    Igrok:=True
+  Else Igrok:=False;
+
+  aiNovaya.Enabled:=True;
+  If Igrok then
+    aiItog.GlyphNum:=3
+  Else
+    HodCompa;
+end;
+
+procedure TfGlav.aiVyhodClick(Sender: TObject);
+begin
+  Close;
+end;
+
+procedure TfGlav.aiN1Click(Sender: TObject);
+begin
+  If Igrok then
+  Begin
+    if (Sender as TAnimatedImage).GlyphNum=0 then
+    begin
+      (Sender as TAnimatedImage).GlyphNum:=Random(12)+1;
+      Kvadrat[StrToInt((Sender as TAnimatedImage).Name[4])]:=1;
+      Igrok:=False;
+      aiItog.GlyphNum:=4;
+      aiNovaya.Tag:=1;
+      HodCompa;
+    end;
+  End;
+end;
+
+//==============================================================================
+//==============================================================================
+
+procedure HodCompa;
+var
+  Dobro: Boolean;
+  Max: Smallint;
+  i, ran: Byte;
+  AI: TAnimatedImage;
+  Ptr, PtrCh, Vybor: PRNode;
+begin
+  If fGlav.aiNovaya.Tag=0 then   //Первый ход компа всегда наугад
+  Begin
+    Dobro:=False;
+    for i:=1 to 9 do
+      if (Kvadrat[i]=1) and (i<>5) then   //Но серединку занимаем!))
+      begin
+        fGlav.aiN5.GlyphNum:=Random(12)+13;
+        Kvadrat[5]:=2;
+        Dobro:=True;
+        Break;
+      end;
+
+    If not Dobro then
+      while True do
+      begin
+        ran:=Random(9)+1;
+        AI:=fGlav.FindComponent('aiN'+IntToStr(ran)) as TAnimatedImage;
+        if AI.GlyphNum=0 then
+        begin
+          Ai.GlyphNum:=Random(12)+13;
+          Kvadrat[ran]:=2;
+          Break;
+        end;
+      end;
+
+    Igrok:=True;
+    fGlav.aiItog.GlyphNum:=3;
+    fGlav.aiNovaya.Tag:=1;
+  End
+  Else
+  Begin
+    if Derevo.Root^.FirstCh=nil then  //Построение дерева
+    begin
+      for i:=1 to 9 do
+        Derevo.Root^.Value[i]:=Kvadrat[i];
+      Derevo.Root^.Comp:=False;
+      Sozdanie(Derevo.Root, 0);
+    end
+    else                            //Поиск ветки по сделанному игроком ходу
+    begin
+      Ptr:=Derevo.Root^.FirstCh;
+      while Ptr<>nil do
+      begin
+        Dobro:=True;
+
+        for i:=1 to 9 do
+        begin
+          if Kvadrat[i]<>Ptr^.Value[i] then
+          begin
+            Dobro:=False;
+            Break;
+          end;
+        end;//for
+
+        if Dobro then Break;
+        Ptr:=Ptr^.Next;
+      end;//while
+
+      Derevo.Root:=Ptr;
+    end;//else
+
+    Max:=Proverka(Derevo.Root);     //Предварительная проверка на победу
+    if Max=-10 then
+      fGlav.aiItog.GlyphNum:=1
+    else if Max=0 then
+      fGlav.aiItog.GlyphNum:=2
+    else if Max=10 then
+      fGlav.aiItog.GlyphNum:=0;
+    if Max<9 then Exit;
+
+    Ptr:=Derevo.Root^.FirstCh;
+    while Ptr<>nil do               //Отбрасывание ненужных ходов
+    begin
+
+      PtrCh:=Ptr^.FirstCh;
+      while PtrCh<>nil do
+      begin
+
+        if Proverka(PtrCh)=-10 then
+        begin
+          Ptr^.Mark:=-30000;
+          Break;
+        end;
+
+        PtrCh:=PtrCh^.Next;
+      end;//while
+
+      Ptr:=Ptr^.Next;
+    end;//while
+
+    Max:=-30000;
+    Vybor:=nil;
+    Ptr:=Derevo.Root^.FirstCh;
+    while Ptr<>nil do               //Выбираю необходимую ветку для хода
+    begin
+      if Ptr^.Mark>Max then
+      begin
+        Max:=Ptr^.Mark;
+        Vybor:=Ptr;
+      end
+      else if Vybor<>nil then
+        if (Ptr^.Mark=Max) and (Ptr^.Max>Vybor^.Max) then
+        begin
+          Max:=Ptr^.Mark;
+          Vybor:=Ptr;
+        end;
+      Ptr:=Ptr^.Next;
+    end;//while
+
+    if Vybor=nil then       //Если выбор не сделан (проигрыш по-любому)
+    begin
+      Ptr:=Derevo.Root^.FirstCh;
+      while Ptr<>nil do
+      begin
+
+        PtrCh:=Ptr^.FirstCh;
+        while Ptr<>nil do
+        begin
+
+          Max:=Proverka(PtrCh);
+          if Max=-10 then
+          begin
+            Vybor:=Ptr;
+            Break;
+          end;
+
+          PtrCh:=PtrCh^.Next;
+        end;//while
+
+        Ptr:=Ptr^.Next;
+      end;//while
+      if Vybor=nil then     //Если всё-таки так и не выбралось, то наугад
+        Vybor:=Child(Derevo.Root, Random(NodeDegree(Derevo.Root))+1);
+    end;
+
+    Derevo.Root:=Vybor;                   //Назначаю новую вершину
+
+    for i:=1 to 9 do                      //Обновляю поле
+    begin
+      Kvadrat[i]:=Vybor^.Value[i];
+      AI:=fGlav.FindComponent('aiN'+IntToStr(i)) as TAnimatedImage;
+      if Kvadrat[i]=1 then
+      begin
+        if AI.GlyphNum=0 then
+          AI.GlyphNum:=Random(12)+1;
+      end
+      else if Kvadrat[i]=2 then
+      begin
+        if AI.GlyphNum=0 then
+          AI.GlyphNum:=Random(12)+13;
+      end
+      else //if Kvadrat[i]=0 then
+      begin
+        if AI.GlyphNum=0 then
+          AI.GlyphNum:=0;
+      end;
+    end;
+
+    Max:=Proverka(Vybor);                 //Сообщение
+    if Max=-10 then
+      fGlav.aiItog.GlyphNum:=1
+    else if Max=0 then
+      fGlav.aiItog.GlyphNum:=2
+    else if Max=10 then
+      fGlav.aiItog.GlyphNum:=0
+    else //if Max=9 then
+    begin
+      Igrok:=True;
+      fGlav.aiItog.GlyphNum:=3;
+    end;
+
+  End;//Else if fGlav.bNovaya.Tag<>0 then
+end;
+
+procedure Sozdanie(El: PRNode; Vys: Word);
+var
+  i: Byte;
+  k: ShortInt;
+  Max: Shortint;
+  Ptr: PRNode;
+begin
+  For i:=1 to 9 do
+  Begin
+    if El^.Value[i]=0 then
+    begin
+      Ptr:=Derevo.Add(El);              //Новая ветка
+
+      for k:=1 to 9 do                  //Назначение ей данных по полю
+        Ptr^.Value[k]:=El^.Value[k];
+      if El^.Comp then
+        Ptr^.Value[i]:=1
+      else Ptr^.Value[i]:=2;
+      Ptr^.Comp:=not El^.Comp;          //Кто ходит
+
+      k:=Proverka(Ptr);                 //Проверка на победу
+      if k=9 then
+        Sozdanie(Ptr, Vys+1)    //Если ещё есть ходы, то создаём ветку для новой
+      else
+      begin
+        Inc(El^.Mark, k-15*Vys);    //Назначаю "вес" ветки в зависимости от глубины
+        El^.Max:=k;                     //Назначаю результат игры
+      end;
+    end;//if
+  End;//For
+  If El<>Derevo.Root then
+    if El^.Max>-30000 then
+    begin
+      Inc(El^.Parent^.Mark, El^.Mark);  //Назначаю "вес" родителю
+      Max:=El^.Max DIV 10;
+      if Max>El^.Parent^.Max then       //Назначаю результат родителю
+        El^.Parent^.Max:=Max;
+    end;
+end;
+
+function Proverka(El: PRNode): ShortInt;
+var
+  Pusto: Boolean;
+  i: Byte;
+  Kv: Array [1..9] of Byte;
+begin
+  (*
+    9 - Есть свободные ходы
+   -1 - Проигрыш компа
+    0 - Ничья
+    1 - Победа компа
+  *)
+  Result:=9;
+
+  Pusto:=False;
+  For i:=1 to 9 do
+  Begin
+    Kv[i]:=El^.Value[i];
+    if Kv[i]=0 then Pusto:=True;
+  End;
+
+  If ( (Kv[1]=Kv[2]) and (Kv[2]=Kv[3]) and (Kv[1]=1) ) OR
+     ( (Kv[4]=Kv[5]) and (Kv[5]=Kv[6]) and (Kv[4]=1) ) OR
+     ( (Kv[7]=Kv[8]) and (Kv[8]=Kv[9]) and (Kv[7]=1) ) OR
+     ( (Kv[1]=Kv[4]) and (Kv[4]=Kv[7]) and (Kv[1]=1) ) OR
+     ( (Kv[2]=Kv[5]) and (Kv[5]=Kv[8]) and (Kv[2]=1) ) OR
+     ( (Kv[3]=Kv[6]) and (Kv[6]=Kv[9]) and (Kv[3]=1) ) OR
+     ( (Kv[1]=Kv[5]) and (Kv[5]=Kv[9]) and (Kv[1]=1) ) OR
+     ( (Kv[3]=Kv[5]) and (Kv[5]=Kv[7]) and (Kv[3]=1) ) then
+    Result:=-10
+  Else if
+     ( (Kv[1]=Kv[2]) and (Kv[2]=Kv[3]) and (Kv[1]=2) ) OR
+     ( (Kv[4]=Kv[5]) and (Kv[5]=Kv[6]) and (Kv[4]=2) ) OR
+     ( (Kv[7]=Kv[8]) and (Kv[8]=Kv[9]) and (Kv[7]=2) ) OR
+     ( (Kv[1]=Kv[4]) and (Kv[4]=Kv[7]) and (Kv[1]=2) ) OR
+     ( (Kv[2]=Kv[5]) and (Kv[5]=Kv[8]) and (Kv[2]=2) ) OR
+     ( (Kv[3]=Kv[6]) and (Kv[6]=Kv[9]) and (Kv[3]=2) ) OR
+     ( (Kv[1]=Kv[5]) and (Kv[5]=Kv[9]) and (Kv[1]=2) ) OR
+     ( (Kv[3]=Kv[5]) and (Kv[5]=Kv[7]) and (Kv[3]=2) ) then
+    Result:=10
+  Else if not Pusto then
+    Result:=0;
+end;
+
+procedure TfGlav.aiNovayaMouseMove(Sender: TObject; Shift: TShiftState; X,
+  Y: Integer);
+begin
+  aiNovaya.GlyphNum:=1;
+end;
+
+procedure TfGlav.aiVyhodMouseMove(Sender: TObject; Shift: TShiftState; X,
+  Y: Integer);
+begin
+  aiVyhod.GlyphNum:=1;
+end;
+
+procedure TfGlav.Image1MouseMove(Sender: TObject; Shift: TShiftState; X,
+  Y: Integer);
+begin
+  aiNovaya.GlyphNum:=0;
+  aiVyhod.GlyphNum:=0;
+end;
+
+end.
